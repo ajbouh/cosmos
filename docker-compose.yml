@@ -1,5 +1,35 @@
-version: "3.0"
+version: "3.8"
 services:
   cosmos:
+    image: ghcr.io/ajbouh/cosmos:3.1.1
     build:
       dockerfile: Dockerfile
+      target: cosmos
+  python:
+    image: ghcr.io/ajbouh/cosmos:python-cosmo-3.1.1
+    build:
+      dockerfile: Dockerfile
+      target: ape
+      args:
+        COSMOS_EXE: /usr/bin/python
+  lua:
+    image: ghcr.io/ajbouh/cosmos:lua-cosmo-3.1.1
+    build:
+      dockerfile: Dockerfile
+      target: ape
+      args:
+        COSMOS_EXE: /usr/bin/lua
+  sqlite3:
+    image: ghcr.io/ajbouh/cosmos:sqlite3-cosmo-3.1.1
+    build:
+      dockerfile: Dockerfile
+      target: ape
+      args:
+        COSMOS_EXE: /usr/bin/sqlite3
+  qjs:
+    image: ghcr.io/ajbouh/cosmos:qjs-cosmo-3.1.1
+    build:
+      dockerfile: Dockerfile
+      target: ape
+      args:
+        COSMOS_EXE: /usr/bin/qjs
