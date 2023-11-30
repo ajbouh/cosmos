@@ -8,4 +8,6 @@ docker compose run --build --rm -it python
 docker compose run --build --rm -it lua
 docker compose run --build --rm -it sqlite3
 docker compose run --build --rm -it qjs
+docker compose run --build --rm -it mistral-7b-instruct-v0.1-q4_k_m-cuda
+docker compose run --build --rm -it mistral-7b-instruct-v0.1-q4_k_m
 ```

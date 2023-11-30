@@ -33,3 +33,39 @@ services:
       target: ape
       args:
         COSMOS_EXE: /usr/bin/qjs
+  mistral-7b-instruct-v0.1-q4_k_m-cuda:
+    image: ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4_k_m-cuda-12.1.1-cosmo-3.1.1
+    deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: ["gpu"]}]}}}
+    build:
+      dockerfile: Dockerfile
+      target: llamafile-cuda
+      args:
+        LLAMAFILE_URL: https://huggingface.co/jartine/mistral-7b.llamafile/resolve/main/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile?download=true
+        LLAMAFILE_CHECKSUM: sha256:c8d34c244e01a91df1e8b22196dfddb9662f6b08fbcd4a23609d7b736b56f4ae
+        LLAMAFILE_N_GPU_LAYERS: 35
+  mistral-7b-instruct-v0.1-q4_k_m:
+    image: ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4_k_m-cosmo-3.1.1
+    build:
+      dockerfile: Dockerfile
+      target: llamafile
+      args:
+        LLAMAFILE_URL: https://huggingface.co/jartine/mistral-7b.llamafile/resolve/main/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile?download=true
+        LLAMAFILE_CHECKSUM: sha256:c8d34c244e01a91df1e8b22196dfddb9662f6b08fbcd4a23609d7b736b56f4ae
+  llava-v1.5-7b-q4_k-cuda:
+    image: ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cuda-12.1.1-cosmo-3.1.1
+    deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: ["gpu"]}]}}}
+    build:
+      dockerfile: Dockerfile
+      target: llamafile-gguf-cuda
+      args:
+        GGUF_URL: https://huggingface.co/jartine/llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q4_K.gguf?download=true
+        GGUF_CHECKSUM: sha256:c91ebf0a628ceb25e374df23ad966cc1bf1514b33fecf4f0073f9619dec5b3f9
+        LLAMAFILE_N_GPU_LAYERS: 35
+  llava-v1.5-7b-q4_k:
+    image: ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cosmo-3.1.1
+    build:
+      dockerfile: Dockerfile
+      target: llamafile-gguf
+      args:
+        GGUF_URL: https://huggingface.co/jartine/llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q4_K.gguf?download=true
+        GGUF_CHECKSUM: sha256:c91ebf0a628ceb25e374df23ad966cc1bf1514b33fecf4f0073f9619dec5b3f9

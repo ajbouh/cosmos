@@ -21,7 +21,8 @@ ADD  --checksum=sha256:241dc90f3e92b22c9e08cfb5f6df2e920da258e3c461d9677f267ab7a
 WORKDIR /opt/cosmos
 RUN unzip /dl/cosmos.zip
 WORKDIR /opt/cosmos/bin
-RUN /usr/bin/assimilate-x86_64.elf -c dd \
+RUN /usr/bin/assimilate-x86_64.elf -c assimilate \
+  && /usr/bin/assimilate-x86_64.elf -c dd \
   && /usr/bin/assimilate-x86_64.elf -c cp \
   && /usr/bin/assimilate-x86_64.elf -c mv \
   && /usr/bin/assimilate-x86_64.elf -c echo \
@@ -98,8 +99,66 @@ CMD ["/bin/bash"]
 # COPY --from=unpack-cosmos /usr/bin/ /usr/bin/
 # CMD /bin/bash
 
-# FROM cosmos-scratch as mistral-7b-instruct-v0.1-Q4_K_M-main
-# LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
-# COPY --chmod=0755 mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile /usr/bin/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile
-# ENV PATH=/bin:/usr/bin
-# ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile"]
+FROM cosmos-scratch as llamafile
+LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
+ARG LLAMAFILE_URL
+ARG LLAMAFILE_CHECKSUM
+ADD --checksum=${LLAMAFILE_CHECKSUM} --chmod=0755 ${LLAMAFILE_URL} /usr/bin/llamafile
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile"]
+
+FROM cosmos-scratch as llamafile-gguf
+LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
+ADD --checksum=sha256:dc538ce8721bb84ad3a9f683757ce7a227e61bf2c6e092c4014838fe198c41cc --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.1/llamafile-main-0.1 /usr/bin/llamafile-main
+ARG GGUF_URL
+ARG GGUF_CHECKSUM
+ADD --checksum=${GGUF_CHECKSUM} --chmod=0755 ${GGUF_URL} /model.gguf
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile-main", "-m", "/model.gguf"]
+
+FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 as devel-llamafile
+ADD --checksum=sha256:dc538ce8721bb84ad3a9f683757ce7a227e61bf2c6e092c4014838fe198c41cc --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.1/llamafile-main-0.1 /usr/bin/llamafile-main
+# HACK we need to assimilate so this can run on github actions...
+COPY --from=unpack-cosmos /usr/bin/assimilate /usr/bin/
+RUN /usr/bin/assimilate -c /usr/bin/llamafile-main
+# HACK get llamafile to build stubs we can use at runtime. would be better to use a "only compile stubs" entrypoint
+RUN (/usr/bin/llamafile-main -m /dev/null --n-gpu-layers 1 || true) \
+  && [ -e /root/.cosmo ] && [ -e /root/.llamafile ]
+
+FROM cosmos-scratch as llamafile-cuda-scratch
+LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
+COPY --from=devel-llamafile /usr/local/cuda/targets/x86_64-linux/lib/libcublas.so.12 /usr/local/cuda/targets/x86_64-linux/lib/libcublasLt.so.12 /usr/local/cuda/targets/x86_64-linux/lib/
+COPY --from=devel-llamafile /lib64/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
+COPY --from=devel-llamafile /lib/x86_64-linux-gnu/libstdc++.so.6 /lib/x86_64-linux-gnu/libm.so.6 /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/libc.so.6 /lib/x86_64-linux-gnu/librt.so.1 /lib/x86_64-linux-gnu/libpthread.so.0 /lib/x86_64-linux-gnu/libdl.so.2 /lib/x86_64-linux-gnu/
+WORKDIR /root
+COPY --from=devel-llamafile /root/.cosmo /root/.cosmo
+COPY --from=devel-llamafile /root/.llamafile /root/.llamafile
+ENV PATH=/bin:/usr/bin
+ENV HOME=/root
+ENV LD_LIBRARY_PATH=/usr/local/cuda/targets/x86_64-linux/lib:/lib:/lib64
+# HACK forge an executable nvcc, because llamafile needs to find nvcc before looking for cached .cosmo and .llamafile files
+COPY --from=unpack-cosmos /bin/chmod /bin/
+WORKDIR /usr/local/cuda/bin/
+RUN printf "" >nvcc
+RUN chmod 0755 nvcc
+# HACK things seem to fail if we have multiple CUDA devices. limit ourselves to one device for now to avoid errors like:
+# >  CUDA error 2 at /root/.llamafile/ggml-cuda.cu:7864: out of memory
+# >  current device: 4
+ENV CUDA_VISIBLE_DEVICES=0
+
+FROM llamafile-cuda-scratch as llamafile-cuda
+LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
+ARG LLAMAFILE_URL
+ARG LLAMAFILE_CHECKSUM
+ADD --checksum=${LLAMAFILE_CHECKSUM} --chmod=0755 ${LLAMAFILE_URL} /usr/bin/llamafile
+ARG LLAMAFILE_N_GPU_LAYERS=35
+ENV LLAMAFILE_N_GPU_LAYERS=${LLAMAFILE_N_GPU_LAYERS}
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\" --n-gpu-layers $LLAMAFILE_N_GPU_LAYERS", "sh", "/usr/bin/llamafile"]
+
+FROM llamafile-cuda-scratch as llamafile-gguf-cuda
+LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
+ADD --checksum=sha256:dc538ce8721bb84ad3a9f683757ce7a227e61bf2c6e092c4014838fe198c41cc --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.1/llamafile-main-0.1 /usr/bin/llamafile-main
+ARG GGUF_URL
+ARG GGUF_CHECKSUM
+ADD --checksum=${GGUF_CHECKSUM} --chmod=0755 ${GGUF_URL} /model.gguf
+ARG LLAMAFILE_N_GPU_LAYERS=35
+ENV LLAMAFILE_N_GPU_LAYERS=${LLAMAFILE_N_GPU_LAYERS}
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\" --n-gpu-layers $LLAMAFILE_N_GPU_LAYERS", "sh", "/usr/bin/llamafile-main", "-m", "/model.gguf"]
