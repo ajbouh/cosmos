@@ -17,7 +17,7 @@ docker run --rm -it --gpus all ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4
 docker run --rm -it --gpus all ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cuda-12.1.1-cosmo-3.1.1
 ```
 
-To build and run one of these, first cloen the project and then try one of these docker commands:
+To build and run one of these, first clone the project and then try one of these docker commands:
 ```
 docker compose run --build --rm -it cosmos
 docker compose run --build --rm -it python
