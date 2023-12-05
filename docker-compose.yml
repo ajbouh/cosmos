@@ -1,59 +1,60 @@
 version: "3.8"
 services:
   cosmos:
-    image: ghcr.io/ajbouh/cosmos:3.1.1
+    image: ghcr.io/ajbouh/cosmos:3.1.3
     build:
       dockerfile: Dockerfile
       target: cosmos
   python:
-    image: ghcr.io/ajbouh/cosmos:python-cosmo-3.1.1
+    image: ghcr.io/ajbouh/cosmos:python-cosmo-3.1.3
     build:
       dockerfile: Dockerfile
       target: ape
       args:
         COSMOS_EXE: /usr/bin/python
   lua:
-    image: ghcr.io/ajbouh/cosmos:lua-cosmo-3.1.1
+    image: ghcr.io/ajbouh/cosmos:lua-cosmo-3.1.3
     build:
       dockerfile: Dockerfile
       target: ape
       args:
         COSMOS_EXE: /usr/bin/lua
   sqlite3:
-    image: ghcr.io/ajbouh/cosmos:sqlite3-cosmo-3.1.1
+    image: ghcr.io/ajbouh/cosmos:sqlite3-cosmo-3.1.3
     build:
       dockerfile: Dockerfile
       target: ape
       args:
         COSMOS_EXE: /usr/bin/sqlite3
   qjs:
-    image: ghcr.io/ajbouh/cosmos:qjs-cosmo-3.1.1
+    image: ghcr.io/ajbouh/cosmos:qjs-cosmo-3.1.3
     build:
       dockerfile: Dockerfile
       target: ape
       args:
         COSMOS_EXE: /usr/bin/qjs
-  mistral-7b-instruct-v0.1-q4_k_m-cuda:
-    image: ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4_k_m-cuda-12.1.1-cosmo-3.1.1
-    deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: ["gpu"]}]}}}
-    build:
-      dockerfile: Dockerfile
-      target: llamafile-cuda
-      args:
-        LLAMAFILE_URL: https://huggingface.co/jartine/mistral-7b.llamafile/resolve/main/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile?download=true
-        LLAMAFILE_CHECKSUM: sha256:c8d34c244e01a91df1e8b22196dfddb9662f6b08fbcd4a23609d7b736b56f4ae
-        LLAMAFILE_N_GPU_LAYERS: 35
-  mistral-7b-instruct-v0.1-q4_k_m:
-    image: ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4_k_m-cosmo-3.1.1
-    build:
-      dockerfile: Dockerfile
-      target: llamafile
-      args:
-        LLAMAFILE_URL: https://huggingface.co/jartine/mistral-7b.llamafile/resolve/main/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile?download=true
-        LLAMAFILE_CHECKSUM: sha256:c8d34c244e01a91df1e8b22196dfddb9662f6b08fbcd4a23609d7b736b56f4ae
+  # mistral-7b-instruct-v0.1-q4_k_m-cuda:
+  #   image: ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4_k_m-cuda-12.1.1-cosmo-3.1.3
+  #   deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: ["gpu"]}]}}}
+  #   build:
+  #     dockerfile: Dockerfile
+  #     target: llamafile-cuda
+  #     args:
+  #       LLAMAFILE_URL: https://huggingface.co/jartine/mistral-7b.llamafile/resolve/649327b402e83a9d251adf813bc5f64fee5dbdd3/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile?download=true
+  #       LLAMAFILE_CHECKSUM: sha256:1944286a05b979cb37652c2cf8a00f3fbc5275b6d0108b36adb199962de65562
+  #       LLAMAFILE_N_GPU_LAYERS: 35
+  # mistral-7b-instruct-v0.1-q4_k_m:
+  #   image: ghcr.io/ajbouh/cosmos:mistral-7b-instruct-v0.1-q4_k_m-cosmo-3.1.3
+  #   build:
+  #     dockerfile: Dockerfile
+  #     target: llamafile
+  #     args:
+  #       LLAMAFILE_URL: https://huggingface.co/jartine/mistral-7b.llamafile/resolve/649327b402e83a9d251adf813bc5f64fee5dbdd3/mistral-7b-instruct-v0.1-Q4_K_M-main.llamafile?download=true
+  #       LLAMAFILE_CHECKSUM: sha256:1944286a05b979cb37652c2cf8a00f3fbc5275b6d0108b36adb199962de65562
   llava-v1.5-7b-q4_k-cuda:
-    image: ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cuda-12.1.1-cosmo-3.1.1
+    image: ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cuda-12.1.1-cosmo-3.1.3
     deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: ["gpu"]}]}}}
+    ports: ["8080:8080"]
     build:
       dockerfile: Dockerfile
       target: llamafile-gguf-cuda
@@ -62,10 +63,31 @@ services:
         GGUF_CHECKSUM: sha256:c91ebf0a628ceb25e374df23ad966cc1bf1514b33fecf4f0073f9619dec5b3f9
         LLAMAFILE_N_GPU_LAYERS: 35
   llava-v1.5-7b-q4_k:
-    image: ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cosmo-3.1.1
+    image: ghcr.io/ajbouh/cosmos:llava-v1.5-7b-q4_k-cosmo-3.1.3
+    ports: ["8080:8080"]
     build:
       dockerfile: Dockerfile
       target: llamafile-gguf
       args:
         GGUF_URL: https://huggingface.co/jartine/llava-v1.5-7B-GGUF/resolve/main/llava-v1.5-7b-Q4_K.gguf?download=true
         GGUF_CHECKSUM: sha256:c91ebf0a628ceb25e374df23ad966cc1bf1514b33fecf4f0073f9619dec5b3f9
+  airoboros-m-7b-3.1.2-dare-0.85.q4_k_m-cuda:
+    image: ghcr.io/ajbouh/cosmos:airoboros-m-7b-3.1.2-dare-0.85.q4_k_m-cuda-12.1.1-cosmo-3.1.3
+    deploy: {resources: {reservations: {devices: [{driver: nvidia, count: all, capabilities: ["gpu"]}]}}}
+    ports: ["8080:8080"]
+    build:
+      dockerfile: Dockerfile
+      target: llamafile-gguf-cuda
+      args:
+        GGUF_URL: https://huggingface.co/TheBloke/airoboros-m-7B-3.1.2-dare-0.85-GGUF/resolve/main/airoboros-m-7b-3.1.2-dare-0.85.Q4_K_M.gguf?download=true
+        GGUF_CHECKSUM: sha256:5d6bc74b99aa89d3c35c90c74d6844e1e45bd810dd08f9f55252f74ed87b0663
+        LLAMAFILE_N_GPU_LAYERS: 35
+  airoboros-m-7b-3.1.2-dare-0.85.q4_k_m:
+    image: ghcr.io/ajbouh/cosmos:airoboros-m-7b-3.1.2-dare-0.85.q4_k_m-cosmo-3.1.3
+    ports: ["8080:8080"]
+    build:
+      dockerfile: Dockerfile
+      target: llamafile-gguf
+      args:
+        GGUF_URL: https://huggingface.co/TheBloke/airoboros-m-7B-3.1.2-dare-0.85-GGUF/resolve/main/airoboros-m-7b-3.1.2-dare-0.85.Q4_K_M.gguf?download=true
+        GGUF_CHECKSUM: sha256:5d6bc74b99aa89d3c35c90c74d6844e1e45bd810dd08f9f55252f74ed87b0663

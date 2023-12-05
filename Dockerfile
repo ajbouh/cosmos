@@ -5,17 +5,17 @@ FROM busybox as busybox
 # define a starting point "scratch" image that can run APEs
 FROM scratch as cosmos-scratch
 COPY --from=busybox /bin/uname /usr/bin/
-ADD --chmod=0755 --checksum=sha256:349f3f511c4eb70c4db52e2fb99a41d9b208c83c3ec682c057ebaf1fe5f9857b https://cosmo.zip/pub/cosmos/bin/assimilate-x86_64.elf /usr/bin/
-ADD --chmod=0755 --checksum=sha256:7b6f27e3997be53afc70717e0d7dea35eea799987224380bccc176b494996d0f https://cosmo.zip/pub/cosmos/bin/dash /bin/sh
+ADD --chmod=0755 --checksum=sha256:349f3f511c4eb70c4db52e2fb99a41d9b208c83c3ec682c057ebaf1fe5f9857b https://cosmo.zip/pub/cosmos/v/3.1.3/bin/assimilate-x86_64.elf /usr/bin/
+ADD --chmod=0755 --checksum=sha256:7b6f27e3997be53afc70717e0d7dea35eea799987224380bccc176b494996d0f https://cosmo.zip/pub/cosmos/v/3.1.3/bin/dash /bin/sh
 RUN ["/usr/bin/assimilate-x86_64.elf", "-c", "/bin/sh"]
-ADD --checksum=sha256:abf3b1bb7182935bf48d98dc143c51ee563d29a1fd2c3930ff5a8d8c8d823817 --chmod=0755 https://justine.lol/ape.elf /usr/bin/ape
+ADD --checksum=sha256:abf3b1bb7182935bf48d98dc143c51ee563d29a1fd2c3930ff5a8d8c8d823817 --chmod=0755 https://cosmo.zip/pub/cosmos/v/3.1.3/bin/ape-x86_64.elf /usr/bin/ape
 ENV PATH=/bin:/usr/bin
 
 # download and unpack all the cosmos binaries
 FROM cosmos-scratch as unpack-cosmos
-ADD --chmod=0755 --checksum=sha256:48e33306662ff052b21bb84e4b03779d94127727758cfc43d1551ea05d44ee3d https://cosmo.zip/pub/cosmos/bin/unzip /usr/bin/
+ADD --chmod=0755 --checksum=sha256:d9bf928f1aa32e3588087337cb04568b3284fc678b079612e7b74f72f01c0913 https://cosmo.zip/pub/cosmos/v/3.1.3/bin/unzip /usr/bin/
 RUN ["/usr/bin/assimilate-x86_64.elf", "-c", "/usr/bin/unzip"]
-ADD  --checksum=sha256:241dc90f3e92b22c9e08cfb5f6df2e920da258e3c461d9677f267ab7a6dff2fd https://cosmo.zip/pub/cosmos/zip/cosmos.zip /dl/
+ADD  --checksum=sha256:e280987f99f8c9802fa5564adbdc08ec7a8f8738c16a75cf74fb820cc1c14981 https://cosmo.zip/pub/cosmos/zip/cosmos-3.1.3.zip /dl/cosmos.zip
 
 # list of binaries that must be assimilated and manifest for /bin as described in https://justine.lol/cosmos.txt (as of 2023-11-29)
 WORKDIR /opt/cosmos
@@ -108,14 +108,17 @@ ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile"]
 
 FROM cosmos-scratch as llamafile-gguf
 LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
-ADD --checksum=sha256:dc538ce8721bb84ad3a9f683757ce7a227e61bf2c6e092c4014838fe198c41cc --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.1/llamafile-main-0.1 /usr/bin/llamafile-main
+ADD --checksum=sha256:c7151d48677e352e492731bd999d9d74c792fa1440715a858dbf3b92ee274abe --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-main-0.2.1 /usr/bin/llamafile-main
+ADD --checksum=sha256:2b3c692e50d903cbf6ac3d8908f8394101b5be5f8a4573b472975fa8c9f09e68 --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-server-0.2.1 /usr/bin/llamafile-server
 ARG GGUF_URL
 ARG GGUF_CHECKSUM
 ADD --checksum=${GGUF_CHECKSUM} --chmod=0755 ${GGUF_URL} /model.gguf
-ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile-main", "-m", "/model.gguf"]
+EXPOSE 8080
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile-server", "-m", "/model.gguf", "--port", "8080", "--host", "0.0.0.0", "--nobrowser"]
 
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 as devel-llamafile
-ADD --checksum=sha256:dc538ce8721bb84ad3a9f683757ce7a227e61bf2c6e092c4014838fe198c41cc --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.1/llamafile-main-0.1 /usr/bin/llamafile-main
+ADD --checksum=sha256:c7151d48677e352e492731bd999d9d74c792fa1440715a858dbf3b92ee274abe --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-main-0.2.1 /usr/bin/llamafile-main
+ADD --checksum=sha256:2b3c692e50d903cbf6ac3d8908f8394101b5be5f8a4573b472975fa8c9f09e68 --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-server-0.2.1 /usr/bin/llamafile-server
 # HACK we need to assimilate so this can run on github actions...
 COPY --from=unpack-cosmos /usr/bin/assimilate /usr/bin/
 RUN /usr/bin/assimilate -c /usr/bin/llamafile-main
@@ -134,11 +137,6 @@ COPY --from=devel-llamafile /root/.llamafile /root/.llamafile
 ENV PATH=/bin:/usr/bin
 ENV HOME=/root
 ENV LD_LIBRARY_PATH=/usr/local/cuda/targets/x86_64-linux/lib:/lib:/lib64
-# HACK forge an executable nvcc, because llamafile needs to find nvcc before looking for cached .cosmo and .llamafile files
-COPY --from=unpack-cosmos /bin/chmod /bin/
-WORKDIR /usr/local/cuda/bin/
-RUN printf "" >nvcc
-RUN chmod 0755 nvcc
 # HACK things seem to fail if we have multiple CUDA devices. limit ourselves to one device for now to avoid errors like:
 # >  CUDA error 2 at /root/.llamafile/ggml-cuda.cu:7864: out of memory
 # >  current device: 4
@@ -155,10 +153,12 @@ ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\" --n-gpu-layers $LLAMAFILE_N_GPU_LAYERS
 
 FROM llamafile-cuda-scratch as llamafile-gguf-cuda
 LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
-ADD --checksum=sha256:dc538ce8721bb84ad3a9f683757ce7a227e61bf2c6e092c4014838fe198c41cc --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.1/llamafile-main-0.1 /usr/bin/llamafile-main
+ADD --checksum=sha256:c7151d48677e352e492731bd999d9d74c792fa1440715a858dbf3b92ee274abe --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-main-0.2.1 /usr/bin/llamafile-main
+ADD --checksum=sha256:2b3c692e50d903cbf6ac3d8908f8394101b5be5f8a4573b472975fa8c9f09e68 --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-server-0.2.1 /usr/bin/llamafile-server
 ARG GGUF_URL
 ARG GGUF_CHECKSUM
 ADD --checksum=${GGUF_CHECKSUM} --chmod=0755 ${GGUF_URL} /model.gguf
 ARG LLAMAFILE_N_GPU_LAYERS=35
 ENV LLAMAFILE_N_GPU_LAYERS=${LLAMAFILE_N_GPU_LAYERS}
-ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\" --n-gpu-layers $LLAMAFILE_N_GPU_LAYERS", "sh", "/usr/bin/llamafile-main", "-m", "/model.gguf"]
+EXPOSE 8080
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\" --n-gpu-layers $LLAMAFILE_N_GPU_LAYERS", "sh", "/usr/bin/llamafile-server", "-m", "/model.gguf", "--port", "8080", "--host", "0.0.0.0", "--nobrowser"]
