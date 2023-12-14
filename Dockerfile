@@ -108,8 +108,11 @@ ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile"]
 
 FROM cosmos-scratch as llamafile-gguf
 LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
-ADD --checksum=sha256:c7151d48677e352e492731bd999d9d74c792fa1440715a858dbf3b92ee274abe --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-main-0.2.1 /usr/bin/llamafile-main
-ADD --checksum=sha256:2b3c692e50d903cbf6ac3d8908f8394101b5be5f8a4573b472975fa8c9f09e68 --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-server-0.2.1 /usr/bin/llamafile-server
+ARG LLAMAFILE_VERSION=0.4
+ARG LLAMAFILE_CHECKSUM=sha256:0751da4dacf8c71707ec57eb1f456dc4fc4959928ae7e25e3bbc505849227a9e
+ARG LLAMAFILE_SERVER_CHECKSUM=sha256:af25718508cbc6af659366058abb9c106bbdac8220babd8a2e2176b07cfd2544
+ADD --checksum=${LLAMAFILE_CHECKSUM} --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/${LLAMAFILE_VERSION}/llamafile-${LLAMAFILE_VERSION} /usr/bin/llamafile
+ADD --checksum=${LLAMAFILE_SERVER_CHECKSUM} --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/${LLAMAFILE_VERSION}/llamafile-server-${LLAMAFILE_VERSION} /usr/bin/llamafile-server
 ARG GGUF_URL
 ARG GGUF_CHECKSUM
 ADD --checksum=${GGUF_CHECKSUM} --chmod=0755 ${GGUF_URL} /model.gguf
@@ -117,13 +120,12 @@ EXPOSE 8080
 ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\"", "sh", "/usr/bin/llamafile-server", "-m", "/model.gguf", "--port", "8080", "--host", "0.0.0.0", "--nobrowser"]
 
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 as devel-llamafile
-ADD --checksum=sha256:c7151d48677e352e492731bd999d9d74c792fa1440715a858dbf3b92ee274abe --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-main-0.2.1 /usr/bin/llamafile-main
-ADD --checksum=sha256:2b3c692e50d903cbf6ac3d8908f8394101b5be5f8a4573b472975fa8c9f09e68 --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-server-0.2.1 /usr/bin/llamafile-server
+COPY --from=llamafile-gguf /usr/bin/llamafile /usr/bin/llamafile-server /usr/bin/
 # HACK we need to assimilate so this can run on github actions...
 COPY --from=unpack-cosmos /usr/bin/assimilate /usr/bin/
-RUN /usr/bin/assimilate -c /usr/bin/llamafile-main
+RUN /usr/bin/assimilate -c /usr/bin/llamafile
 # HACK get llamafile to build stubs we can use at runtime. would be better to use a "only compile stubs" entrypoint
-RUN (/usr/bin/llamafile-main -m /dev/null --n-gpu-layers 1 || true) \
+RUN (/usr/bin/llamafile -m /dev/null --n-gpu-layers 1 || true) \
   && [ -e /root/.cosmo ] && [ -e /root/.llamafile ]
 
 FROM cosmos-scratch as llamafile-cuda-scratch
@@ -153,8 +155,7 @@ ENTRYPOINT ["/bin/sh", "-c", "exec \"$@\" --n-gpu-layers $LLAMAFILE_N_GPU_LAYERS
 
 FROM llamafile-cuda-scratch as llamafile-gguf-cuda
 LABEL org.opencontainers.image.source https://github.com/ajbouh/cosmos
-ADD --checksum=sha256:c7151d48677e352e492731bd999d9d74c792fa1440715a858dbf3b92ee274abe --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-main-0.2.1 /usr/bin/llamafile-main
-ADD --checksum=sha256:2b3c692e50d903cbf6ac3d8908f8394101b5be5f8a4573b472975fa8c9f09e68 --chmod=0755 https://github.com/Mozilla-Ocho/llamafile/releases/download/0.2.1/llamafile-server-0.2.1 /usr/bin/llamafile-server
+COPY --from=llamafile-gguf /usr/bin/llamafile /usr/bin/llamafile-server /usr/bin/
 ARG GGUF_URL
 ARG GGUF_CHECKSUM
 ADD --checksum=${GGUF_CHECKSUM} --chmod=0755 ${GGUF_URL} /model.gguf
